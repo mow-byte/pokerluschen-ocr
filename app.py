@@ -41,6 +41,7 @@ async def extract(file: UploadFile = File(...), names: List[str] = Query(...)):
     Rules:
     - Do NOT invent names
     - If unclear, map to closest valid name
+    - Instead of the name "Hannes", its nickname "Mow" is also valid. Report "Hannes" in this case
     - Count how many times "5" appears in each player's row (buy-ins) in the second column from the left
     - Extract the payout € value in the third column from the left
     - Extract the result € value from the far right column (can be positive or negative)
