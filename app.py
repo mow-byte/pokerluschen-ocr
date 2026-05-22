@@ -1,5 +1,5 @@
-import vertexai
-from vertexai.generative_models import GenerativeModel, Part
+from google import genai
+from google.genai.types import Part
 from fastapi import FastAPI, UploadFile, File, Query
 import json
 from typing import List
@@ -13,12 +13,14 @@ app = FastAPI()
 PROJECT_ID = "temporal-ground-492911-k4"
 LOCATION = "us-central1"  # or us-central1
 
-# --- INIT VERTEX AI (uses service account automatically) ---
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+# --- INIT Google GenAI client (uses service account automatically) ---
+client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
 
-model = GenerativeModel("gemini-2.5-flash")
+MODEL_NAME = "gemini-2.5-flash"
+
 def extract_json(text):
     return json.loads(text)
+
 def fix_name(name, valid_names):
     match = get_close_matches(name, valid_names, n=1, cutoff=0.6)
     return match[0] if match else None
@@ -27,7 +29,7 @@ def fix_name(name, valid_names):
 async def extract(file: UploadFile = File(...), names: List[str] = Query(...)):
     image_bytes = await file.read()
 
-    image_part = Part.from_data(image_bytes, mime_type=file.content_type)
+    image_part = Part.from_bytes(data=image_bytes, mime_type=file.content_type)
 
     # --- PROMPT ---
     prompt = f"""
@@ -55,7 +57,7 @@ async def extract(file: UploadFile = File(...), names: List[str] = Query(...)):
 
     # --- CALL MODEL ---
     print("Calling ai..")
-    response = model.generate_content([prompt, image_part])
+    response = client.models.generate_content(model=MODEL_NAME, contents=[prompt, image_part])
     raw_text = response.text.strip()
 
     data = extract_json(raw_text)
@@ -68,7 +70,7 @@ async def extract(file: UploadFile = File(...), names: List[str] = Query(...)):
         if fixed:
             cleaned.append({
                 "name": fixed,
-                "guest:": bool(row.get("guest:", False)),
+                "guest": bool(row.get("guest", False)),
                 "buyins": int(row.get("buyins", 0)),
                 "payout": float(row.get("payout", 0)),
                 "result": float(row.get("result", 0))
